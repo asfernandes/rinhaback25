@@ -1,0 +1,13 @@
+*
+!/CMakeLists.txt
+!/vcpkg.json
+!/vcpkg-configuration.json
+!/.git
+!/src
+!/vcpkg-triplets/
+!/cmake-toolchains/
+!/vcpkg
+/vcpkg/vcpkg
+/vcpkg/buildtrees
+/vcpkg/downloads
+/vcpkg/packages
