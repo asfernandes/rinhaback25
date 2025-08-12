@@ -1,5 +1,5 @@
 #include "./PaymentService.h"
-#include "./Util.h"
+#include "../common/Util.h"
 
 
 namespace rinhaback::api
@@ -11,7 +11,7 @@ namespace rinhaback::api
 		repository.postPayment(amount, correlationId, requestedAt);
 	}
 
-	PaymentService::PaymentsSummaryResponse PaymentService::getPaymentsSummary(
+	PaymentsSummaryResponse PaymentService::getPaymentsSummary(
 		std::optional<DateTimeMillis> from, std::optional<DateTimeMillis> to)
 	{
 		const std::optional<std::int64_t> fromInt =

@@ -1,16 +1,19 @@
 #include "mimalloc-new-delete.h"
 #include "./Config.h"
-#include "./Util.h"
+#include "../common/Protocol.h"
+#include "../common/Util.h"
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <memory>
 #include <print>
+#include <span>
 #include <string>
 #include <thread>
 #include <vector>
 #include "boost/asio.hpp"
 #include "boost/beast.hpp"
+#include "boost/json.hpp"
 #include "boost/url.hpp"
 
 namespace asio = boost::asio;
@@ -18,47 +21,27 @@ namespace beast = boost::beast;
 namespace http = boost::beast::http;
 using tcp = asio::ip::tcp;
 
-
 namespace
 {
+	using namespace rinhaback;
 	using namespace rinhaback::proxy;
 
-	struct Backend final
-	{
-		std::string address;
-		tcp::endpoint endpoint;
-	};
-
-	constexpr bool ASYNC_POST_PAYMENT = true;
 	constexpr std::chrono::seconds connectionTimeout{30};
 	std::unique_ptr<asio::io_context> ioc;
-	std::array<Backend, 2> backends;
-	std::atomic<size_t> nextBackend{0};
+	std::unique_ptr<IpcConnection> ipcConnection;
+	std::atomic_uint backendIds;
+	thread_local std::optional<unsigned> backendIdOpt;
 
 	class Session final : public std::enable_shared_from_this<Session>
 	{
-	private:
-		enum class HandlerType
-		{
-			ASYNC,
-			PROXY
-		};
-
 	public:
 		explicit Session(tcp::socket socket)
-			: frontendStream(std::move(socket)),
-			  backendStream(*ioc)
+			: frontendStream(std::move(socket))
 		{
 			frontendStream.expires_after(connectionTimeout);
 		}
 
 		asio::awaitable<void> start()
-		{
-			co_await readRequest();
-		}
-
-	private:
-		asio::awaitable<void> readRequest()
 		{
 			boost::system::error_code ec;
 			co_await http::async_read(frontendStream, buffer, request, asio::redirect_error(asio::use_awaitable, ec));
@@ -77,132 +60,104 @@ namespace
 			co_await processRequest();
 		}
 
+	private:
 		asio::awaitable<void> processRequest()
 		{
-			handlerType = determineHandler();
+			if (!backendIdOpt.has_value())
+				backendIdOpt = backendIds++;
 
-			if (handlerType == HandlerType::ASYNC)
-				co_await handlePostPayment();
+			const auto backendId = backendIdOpt.value();
 
-			co_await proxyToBackend();
-		}
+			auto& message = ipcConnection->header->items[backendId];
 
-		HandlerType determineHandler()
-		{
-			if constexpr (ASYNC_POST_PAYMENT)
+			response.result(http::status::not_found);
+
+			switch (request.method())
 			{
-				if (request.method() == http::verb::post)
+				case http::verb::get:
 				{
-					try
-					{
-						const auto url = boost::urls::parse_origin_form(request.target());
+					const auto url = boost::urls::parse_origin_form(request.target()).value();
 
-						if (url && url->path() == "/payments")
-							return HandlerType::ASYNC;
-					}
-					catch (const std::exception& e)
+					if (url.path() == "/payments-summary")
 					{
-						std::println(stderr, "URL parse error: {}", e.what());
-						std::fflush(stderr);
+						message.messageType = IpcMessageType::REQUEST_PAYMENTS_SUMMARY;
+						message.paymentsSummaryRequest = {};
+
+						const auto urlParams = url.params();
+
+						if (const auto fromParam = urlParams.find("from"); fromParam != urlParams.end())
+							message.paymentsSummaryRequest.from = parseDateTime((*fromParam).value);
+
+						if (const auto toParam = urlParams.find("to"); toParam != urlParams.end())
+							message.paymentsSummaryRequest.to = parseDateTime((*toParam).value);
+
+						message.requestReady.post();
+						message.responseReady.wait();
+
+						const auto& defaultGateway = message.paymentsSummaryResponse.defaultGateway;
+						const auto& fallbackGateway = message.paymentsSummaryResponse.fallbackGateway;
+
+						response.result(http::status::ok);
+						response.set(http::field::content_type, "application/json");
+
+						response.body() = std::format(R"({{"default":{{"totalRequests":{},"totalAmount":{:.2f}}},)"
+													  R"("fallback":{{"totalRequests":{},"totalAmount":{:.2f}}}}})",
+							defaultGateway.totalRequests, defaultGateway.totalAmount, fallbackGateway.totalRequests,
+							fallbackGateway.totalAmount);
 					}
+					break;
 				}
+
+				case http::verb::post:
+					if (request.target() == "/payments")
+					{
+						message.postPaymentRequest = {};
+
+						auto inJsonObj = boost::json::parse(request.body()).as_object();
+						const auto& correlationIdJson = inJsonObj["correlationId"];
+						const auto amountJson = inJsonObj["amount"];
+
+						if (correlationIdJson.is_string() && amountJson.is_number())
+						{
+							const auto& correlationId = correlationIdJson.as_string();
+							message.postPaymentRequest.amount = amountJson.to_number<double>();
+
+							if (correlationId.size() == std::tuple_size<CorrelationId>() &&
+								message.postPaymentRequest.amount > 0)
+							{
+								std::copy_n(correlationId.data(), message.postPaymentRequest.correlationId.size(),
+									message.postPaymentRequest.correlationId.begin());
+
+								message.messageType = IpcMessageType::REQUEST_POST_PAYMENT;
+
+								message.requestReady.post();
+
+								response.result(http::status::ok);
+							}
+							else
+								response.result(http::status::bad_request);
+						}
+					}
+					else if (request.target() == "/purge-payments")
+					{
+						message.messageType = IpcMessageType::REQUEST_PURGE_PAYMENTS;
+
+						message.requestReady.post();
+						message.responseReady.wait();
+
+						response.result(http::status::ok);
+					}
+					break;
+
+				default:
+					break;
 			}
 
-			return HandlerType::PROXY;
-		}
-
-		asio::awaitable<void> handlePostPayment()
-		{
 			response.result(http::status::ok);
 			response.version(request.version());
-			response.keep_alive(request.keep_alive());
+			response.keep_alive(response.result() == http::status::ok);
 			response.prepare_payload();
 
-			co_await writeResponse();
-		}
-
-		asio::awaitable<void> proxyToBackend()
-		{
-			size_t backendIndex = nextBackend.fetch_add(1) % backends.size();
-			const auto& backend = backends[backendIndex];
-
-			backendStream.expires_after(connectionTimeout);
-
-			boost::system::error_code ec;
-			co_await backendStream.async_connect(backend.endpoint, asio::redirect_error(asio::use_awaitable, ec));
-
-			if (ec)
-			{
-				std::println(stderr, "Backend connect error ({}:{}): {}", backend.endpoint.address().to_string(),
-					backend.endpoint.port(), ec.message());
-				std::fflush(stderr);
-				co_await sendErrorResponse(http::status::bad_gateway);
-				co_return;
-			}
-
-			auto backendRequest = std::make_shared<http::request<http::string_body>>(request);
-			backendRequest->set(http::field::host, backend.address);
-			backendRequest->prepare_payload();
-
-			co_await http::async_write(backendStream, *backendRequest, asio::redirect_error(asio::use_awaitable, ec));
-
-			if (ec)
-			{
-				std::println(stderr, "Backend write error: {}", ec.message());
-				std::fflush(stderr);
-				co_await sendErrorResponse(http::status::bad_gateway);
-				co_return;
-			}
-
-			if (handlerType == HandlerType::ASYNC)
-			{
-				if (backendStream.socket().is_open())
-				{
-					boost::system::error_code shutdownEc;
-					backendStream.socket().shutdown(tcp::socket::shutdown_both, shutdownEc);
-				}
-			}
-			else
-				co_await readBackendResponse();
-		}
-
-		asio::awaitable<void> readBackendResponse()
-		{
-			buffer.clear();
-
-			boost::system::error_code ec;
-			co_await http::async_read(backendStream, buffer, response, asio::redirect_error(asio::use_awaitable, ec));
-
-			if (ec)
-			{
-				std::println(stderr, "Backend read error: {}", ec.message());
-				std::fflush(stderr);
-				co_await sendErrorResponse(http::status::bad_gateway);
-				co_return;
-			}
-
-			co_await forwardResponseToClient();
-		}
-
-		asio::awaitable<void> forwardResponseToClient()
-		{
-			response.keep_alive(request.keep_alive());
-			response.prepare_payload();
-			co_await writeResponse();
-		}
-
-		asio::awaitable<void> sendErrorResponse(http::status status)
-		{
-			response.result(status);
-			response.version(request.version());
-			response.keep_alive(false);  // Close connection on error
-			response.body() = "Proxy Error";
-			response.prepare_payload();
-			co_await writeResponse();
-		}
-
-		asio::awaitable<void> writeResponse()
-		{
 			boost::system::error_code ec;
 			co_await http::async_write(frontendStream, response, asio::redirect_error(asio::use_awaitable, ec));
 
@@ -214,18 +169,10 @@ namespace
 
 			boost::system::error_code shutdownEc;
 			frontendStream.socket().shutdown(tcp::socket::shutdown_send, shutdownEc);
-
-			if (handlerType != HandlerType::ASYNC)
-			{
-				if (backendStream.socket().is_open())
-					backendStream.socket().shutdown(tcp::socket::shutdown_both, shutdownEc);
-			}
 		}
 
 	private:
-		HandlerType handlerType = HandlerType::PROXY;
 		beast::tcp_stream frontendStream;
-		beast::tcp_stream backendStream;
 		beast::flat_buffer buffer;
 		http::request<http::string_body> request;
 		http::response<http::string_body> response;
@@ -238,7 +185,6 @@ namespace
 			: acceptor(*ioc, listenEndpoint)
 		{
 			acceptor.set_option(asio::socket_base::reuse_address(true));
-			resolveBackends();
 		}
 
 		Server(const Server&) = delete;
@@ -250,30 +196,6 @@ namespace
 		}
 
 	private:
-		void resolveBackends()
-		{
-			tcp::resolver resolver{*ioc};
-
-			backends[0].address = Config::backend0Address;
-			backends[1].address = Config::backend1Address;
-
-			try
-			{
-				for (auto& backend : backends)
-				{
-					const auto [host, port] = parseHostPort(backend.address, 8080);
-					auto results = resolver.resolve(host, std::to_string(port));
-					backend.endpoint = results.begin()->endpoint();
-				}
-			}
-			catch (const std::exception& e)
-			{
-				std::println(stderr, "Failed to resolve backends: {}", e.what());
-				std::fflush(stderr);
-				throw;
-			}
-		}
-
 		asio::awaitable<void> acceptConnections()
 		{
 			while (true)
@@ -311,7 +233,9 @@ namespace
 
 	void run()
 	{
-		ioc = std::make_unique<asio::io_context>(Config::ioWorkers);
+		ipcConnection = std::make_unique<IpcConnection>(std::nullopt);
+
+		ioc = std::make_unique<asio::io_context>(Config::workers);
 
 		const auto [ip, port] = parseHostPort(Config::listenAddress, 8080);
 		const auto endpoint = tcp::endpoint{asio::ip::make_address(ip), port};
@@ -331,9 +255,9 @@ namespace
 		std::fflush(stdout);
 
 		std::vector<std::jthread> threads;
-		threads.reserve(Config::ioWorkers - 1);
+		threads.reserve(Config::workers - 1);
 
-		for (unsigned i = 1; i < Config::ioWorkers; ++i)
+		for (unsigned i = 1; i < Config::workers; ++i)
 		{
 			threads.emplace_back(
 				[]

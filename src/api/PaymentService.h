@@ -2,7 +2,8 @@
 
 #include "./Database.h"
 #include "./PaymentRepository.h"
-#include "./Util.h"
+#include "../common/Types.h"
+#include "../common/Util.h"
 #include <optional>
 #include <utility>
 
@@ -12,18 +13,10 @@ namespace rinhaback::api
 	class PaymentService final
 	{
 	public:
-		struct PaymentsSummaryResponse final
-		{
-			PaymentRepository::PaymentsGatewaySummaryResponse defaultGateway;
-			PaymentRepository::PaymentsGatewaySummaryResponse fallbackGateway;
-		};
-
-	public:
 		PaymentService() = default;
 
 		PaymentService(const PaymentService&) = delete;
 		PaymentService& operator=(const PaymentService&) = delete;
-
 
 	public:
 		void postPayment(

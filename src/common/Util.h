@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Types.h"
 #include <chrono>
 #include <sstream>
 #include <string>
@@ -7,11 +8,9 @@
 #include <cstdint>
 
 
-namespace rinhaback::api
+namespace rinhaback
 {
 	inline const std::string HTTP_CONTENT_TYPE_JSON = "application/json";
-
-	using DateTimeMillis = std::chrono::sys_time<std::chrono::milliseconds>;
 
 	inline DateTimeMillis getCurrentDateTime()
 	{
@@ -46,4 +45,4 @@ namespace rinhaback::api
 
 		return {host, port};
 	}
-}  // namespace rinhaback::api
+}  // namespace rinhaback

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "./Database.h"
-#include "./Util.h"
+#include "../common/Types.h"
+#include "../common/Util.h"
 #include <optional>
 #include <cstdint>
 
@@ -10,13 +11,6 @@ namespace rinhaback::api
 {
 	class PaymentRepository final
 	{
-	public:
-		struct PaymentsGatewaySummaryResponse final
-		{
-			unsigned totalRequests;
-			double totalAmount;
-		};
-
 	private:
 		struct __attribute__((packed)) PaymentKey final
 		{

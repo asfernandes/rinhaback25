@@ -1,7 +1,7 @@
 #include "./PaymentRepository.h"
 #include "./Config.h"
 #include "./Database.h"
-#include "./Util.h"
+#include "../common/Util.h"
 #include <string>
 #include <utility>
 #include <cassert>
@@ -26,7 +26,7 @@ namespace rinhaback::api
 		checkMdbError(mdb_put(transaction.txn, connection.dbis[std::to_underlying(gateway)], &mdbKey, &mdbData, 0));
 	}
 
-	PaymentRepository::PaymentsGatewaySummaryResponse PaymentRepository::getPaymentsSummary(
+	PaymentsGatewaySummaryResponse PaymentRepository::getPaymentsSummary(
 		Transaction& transaction, std::optional<std::int64_t> from, std::optional<std::int64_t> to)
 	{
 		auto& connection = transaction.connection;
