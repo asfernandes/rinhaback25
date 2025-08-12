@@ -7,7 +7,7 @@ file(GLOB_RECURSE SRC
 	"*.cpp"
 )
 
-find_package(Boost REQUIRED COMPONENTS asio url)
+find_package(Boost REQUIRED COMPONENTS asio json url)
 find_package(mimalloc REQUIRED)
 
 
@@ -18,6 +18,7 @@ add_library(${PROJECT_NAME}-lib
 
 target_link_libraries(${PROJECT_NAME}-lib
 	PUBLIC
+		Boost::json
 		Boost::url
 		mimalloc-static
 )

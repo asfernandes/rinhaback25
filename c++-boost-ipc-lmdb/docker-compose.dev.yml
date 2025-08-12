@@ -6,9 +6,7 @@ x-service-templates:
       - ./data:/data
       - ./build/Release/out/bin/rinhaback25-boost-lmdb-api:/app/rinhaback25-boost-lmdb-api:ro
     environment: &api-env
-      IO_WORKERS: 8
-      HANDLER_WORKERS: 8
-      PROCESSOR_WORKERS: 8
+      WORKERS: 4
       DATABASE: /data/database
       DATABASE_SIZE: 41943040
       LISTEN_ADDRESS: 0.0.0.0:8080
@@ -34,12 +32,15 @@ services:
     ipc: shareable
     environment:
       <<: *api-env
-      COORDINATOR: "true"
+      INSTANCE_ID: 0
 
   api2:
     <<: *api
     pid: service:api1
     ipc: service:api1
+    environment:
+      <<: *api-env
+      INSTANCE_ID: 1
     depends_on:
       - api1
 
@@ -48,8 +49,10 @@ services:
     command: /app/rinhaback25-boost-lmdb-proxy
     volumes:
       - ./build/Release/out/bin/rinhaback25-boost-lmdb-proxy:/app/rinhaback25-boost-lmdb-proxy:ro
+    pid: service:api1
+    ipc: service:api1
     environment:
-      IO_WORKERS: 8
+      WORKERS: 4
       LISTEN_ADDRESS: 0.0.0.0:9999
       BACKEND_0_ADDRESS: api1:8080
       BACKEND_1_ADDRESS: api2:8080

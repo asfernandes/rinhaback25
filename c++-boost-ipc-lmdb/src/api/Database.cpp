@@ -1,6 +1,6 @@
 #include "./Database.h"
 #include "./Config.h"
-#include "./Util.h"
+#include "../common/Util.h"
 #include <bit>
 #include <filesystem>
 #include <thread>
