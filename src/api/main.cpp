@@ -219,6 +219,8 @@ namespace
 				break;
 			}
 
+			socket.set_option(boost::asio::ip::tcp::no_delay(true));
+
 			asio::co_spawn(
 				acceptor.get_executor(),
 				[socketPtr = std::make_shared<tcp::socket>(std::move(socket))]() -> asio::awaitable<void>
@@ -234,8 +236,10 @@ namespace
 	{
 		const auto [ip, port] = parseHostPort(Config::listenAddress, 8080);
 		const auto endpoint = tcp::endpoint{boost::asio::ip::make_address(ip), port};
+
 		tcp::acceptor acceptor(*ioc, endpoint);
 		acceptor.set_option(asio::socket_base::reuse_address(true));
+		acceptor.set_option(boost::asio::ip::tcp::no_delay(true));
 
 		std::println("Server listening on {}", Config::listenAddress);
 		std::fflush(stdout);
