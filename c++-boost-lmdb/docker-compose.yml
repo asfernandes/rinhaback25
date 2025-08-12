@@ -7,7 +7,6 @@ x-service-templates:
     environment: &api-env
       IO_WORKERS: 8
       HANDLER_WORKERS: 8
-      PROCESSOR_WORKERS: 8
       DATABASE: /data/database
       DATABASE_SIZE: 41943040
       LISTEN_ADDRESS: 0.0.0.0:8080
