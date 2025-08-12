@@ -238,6 +238,8 @@ namespace
 			: acceptor(*ioc, listenEndpoint)
 		{
 			acceptor.set_option(asio::socket_base::reuse_address(true));
+			acceptor.set_option(boost::asio::ip::tcp::no_delay(true));
+
 			resolveBackends();
 		}
 
@@ -291,6 +293,8 @@ namespace
 
 					break;
 				}
+
+				socket.set_option(boost::asio::ip::tcp::no_delay(true));
 
 				auto session = std::make_shared<Session>(std::move(socket));
 
