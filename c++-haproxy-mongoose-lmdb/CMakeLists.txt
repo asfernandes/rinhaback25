@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-set(VCPKG_ROOT "vcpkg")
+set(VCPKG_ROOT "../vcpkg")
 set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 
 if(DEFINED VCPKG_TARGET_TRIPLET)

@@ -17,7 +17,7 @@ RUN apt update && \
 
 COPY . /src
 
-WORKDIR /src
+WORKDIR /src/c++-haproxy-mongoose-lmdb
 
 ENV VCPKG_DEFAULT_BINARY_CACHE=/vcpkg-cache
 

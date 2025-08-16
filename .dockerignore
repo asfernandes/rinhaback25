@@ -20,3 +20,10 @@
 !/c++-boost-ipc-lmdb/src
 !/c++-boost-ipc-lmdb/vcpkg-triplets/
 !/c++-boost-ipc-lmdb/cmake-toolchains/
+
+!/c++-haproxy-mongoose-lmdb/CMakeLists.txt
+!/c++-haproxy-mongoose-lmdb/vcpkg.json
+!/c++-haproxy-mongoose-lmdb/vcpkg-configuration.json
+!/c++-haproxy-mongoose-lmdb/src
+!/c++-haproxy-mongoose-lmdb/vcpkg-triplets/
+!/c++-haproxy-mongoose-lmdb/cmake-toolchains/
