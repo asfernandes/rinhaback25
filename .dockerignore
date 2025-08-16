@@ -13,3 +13,10 @@
 !/c++-boost-lmdb/src
 !/c++-boost-lmdb/vcpkg-triplets/
 !/c++-boost-lmdb/cmake-toolchains/
+
+!/c++-boost-ipc-lmdb/CMakeLists.txt
+!/c++-boost-ipc-lmdb/vcpkg.json
+!/c++-boost-ipc-lmdb/vcpkg-configuration.json
+!/c++-boost-ipc-lmdb/src
+!/c++-boost-ipc-lmdb/vcpkg-triplets/
+!/c++-boost-ipc-lmdb/cmake-toolchains/

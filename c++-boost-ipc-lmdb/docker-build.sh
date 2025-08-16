@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
 
-docker buildx build --progress plain -t asfernandes/rinhaback25:boost-lmdb .
+docker buildx build --progress plain -t asfernandes/rinhaback25:boost-lmdb -f Dockerfile ..
