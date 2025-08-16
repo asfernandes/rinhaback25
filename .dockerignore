@@ -1,0 +1,15 @@
+*
+
+!/.git
+!/vcpkg
+/vcpkg/vcpkg
+/vcpkg/buildtrees
+/vcpkg/downloads
+/vcpkg/packages
+
+!/c++-boost-lmdb/CMakeLists.txt
+!/c++-boost-lmdb/vcpkg.json
+!/c++-boost-lmdb/vcpkg-configuration.json
+!/c++-boost-lmdb/src
+!/c++-boost-lmdb/vcpkg-triplets/
+!/c++-boost-lmdb/cmake-toolchains/
