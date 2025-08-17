@@ -1,0 +1,57 @@
+{
+  "name": "rinhaback25-drogon-lmdb",
+  "version-string": "0.0.1",
+  "dependencies": [
+    "boost-asio",
+    "boost-beast",
+    "boost-interprocess",
+    "boost-json",
+    "boost-url",
+    "drogon",
+    "lmdb",
+    "mimalloc"
+  ],
+  "overrides": [
+    {
+      "name": "boost-asio",
+      "version": "1.88.0",
+      "port-version": 0
+    },
+    {
+      "name": "boost-beast",
+      "version": "1.88.0",
+      "port-version": 0
+    },
+    {
+      "name": "boost-interprocess",
+      "version": "1.88.0",
+      "port-version": 0
+    },
+    {
+      "name": "boost-json",
+      "version": "1.88.0",
+      "port-version": 0
+    },
+    {
+      "name": "boost-url",
+      "version": "1.88.0",
+      "port-version": 0
+    },
+    {
+      "name": "drogon",
+      "version": "1.9.10",
+      "port-version": 0
+    },
+    {
+      "name": "lmdb",
+      "version": "0.9.33",
+      "port-version": 0
+    },
+    {
+      "name": "mimalloc",
+      "version": "2.2.3",
+      "port-version": 1
+    }
+  ],
+  "builtin-baseline": "efcfaaf60d7ec57a159fc3110403d939bfb69729"
+}
