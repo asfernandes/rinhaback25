@@ -23,4 +23,5 @@ enable_language(CXX)
 
 add_compile_options(-Wall)
 
+add_subdirectory(src/api)
 add_subdirectory(src/proxy)
