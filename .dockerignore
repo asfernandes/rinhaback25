@@ -27,3 +27,10 @@
 !/c++-haproxy-mongoose-lmdb/src
 !/c++-haproxy-mongoose-lmdb/vcpkg-triplets/
 !/c++-haproxy-mongoose-lmdb/cmake-toolchains/
+
+!/c++-drogon-lmdb/CMakeLists.txt
+!/c++-drogon-lmdb/vcpkg.json
+!/c++-drogon-lmdb/vcpkg-configuration.json
+!/c++-drogon-lmdb/src
+!/c++-drogon-lmdb/vcpkg-triplets/
+!/c++-drogon-lmdb/cmake-toolchains/
